@@ -1,0 +1,225 @@
+package pachong;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+//oo思想
+class url_Info_HDU {
+	public final String[] InfoNameArr = { "url", "title", "problem", "time_Lim", "memory_Lim", "total_Sub",
+			"accepted_Sub", "problem_Des", "input", "output", "sample_Inp", "sample_Out", "author" };
+
+	private String url;// url 0
+	private String title;// 页面标题 1
+
+	private String problem;// 题目 2
+
+	private String time_Lim;// 时间限制 3
+	private String memory_Lim;// 内存限制 4
+	private String total_Sub;// 提交总数 5
+	private String accepted_Sub;// 通过的提交数 6
+
+	private String problem_Des;// 题面描述 7
+	private String input;// 输入 8
+	private String output;// 输出 9
+	private String sample_Inp;// 输入样例 10
+	private String sample_Out;// 输出样例 11
+	private String author;// 作者 12
+
+	// 构造函数 url
+	url_Info_HDU(String surl) {
+		this.url = new String(surl);
+	}
+
+	// 构造函数
+	url_Info_HDU(String[] info) {
+		this.url = new String(info[0]);// url 0
+		this.title = new String(info[1]);// 页面标题 1
+
+		this.problem = new String(info[2]);// 题目 2
+
+		this.time_Lim = new String(info[3]);// 时间限制 3
+		this.memory_Lim = new String(info[4]);// 内存限制 4
+		this.total_Sub = new String(info[5]);// 提交总数 5
+		this.accepted_Sub = new String(info[6]);// 通过的提交数 6
+
+		this.problem_Des = new String(info[7]);// 题面描述 7
+		this.input = new String(info[8]);// 输入 8
+		this.output = new String(info[9]);// 输出 9
+		this.sample_Inp = new String(info[10]);// 输入样例 10
+		this.sample_Out = new String(info[11]);// 输出样例 11
+		this.author = new String(info[12]);// 作者 12
+	}
+
+	// 输出 页面信息
+	public String printInfo() {
+
+		return ("[页面标题]：" + this.title + "\r\n[题目]:" + this.problem + "\r\n[时间限制]：" + this.time_Lim + " [内存限制]："+this.memory_Lim + "\r\n[提交总数]："
+				+ this.total_Sub + " [通过的提交数]：" + this.accepted_Sub + "\r\n\r\n[题面描述]:" + this.problem_Des + "\r\n" + "\r\n[输入]："
+				+ this.input + "\r\n[输出]：" + this.output + "\r\n[输入样例]：" + this.sample_Inp + "\r\n[输出样例]：" + this.sample_Out
+				+ "\r\n[作者]：" + this.author + "\r\n");
+
+	}// printInfo -end
+
+	// String 返回元素信息
+	public String getValueFrmCls(String valuename) {
+		for (int i = 0; i < InfoNameArr.length; i++) {
+			if (InfoNameArr[i].equals(valuename)) {
+				return getValueFrmCls(i);
+			}
+		}
+		return "ERROR";
+
+	}// getValueFrmCls(String) -end
+	// int 返回元素信息
+	public String getValueFrmCls(int dx) {
+		if (dx > 6) {// 7-12
+			if (dx > 9) {// 10 11 12
+				return (dx == 11 ? this.sample_Out : (dx == 12 ? this.author : sample_Inp));
+			} else {// 789
+				return (dx == 8 ? this.input : (dx == 9 ? this.output : this.problem_Des));
+			}
+		} else if (dx < 6) {// 0-5
+			if (dx > 2) {// 345
+				return (dx == 4 ? this.memory_Lim : (dx == 5 ? this.total_Sub : this.time_Lim));
+			} else {// 012
+				return (dx == 1 ? this.title : (dx == 2 ? this.problem : this.url));
+			}
+		} else {// 6
+			return this.accepted_Sub;
+		}
+	}
+	
+}// getValueFrmCls(int) -end
+
+public class Main {
+
+	////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// MAIN////////////////////////////////////////////////
+	public static void main(String[] args) {
+		List<url_Info_HDU> url_list = new ArrayList<url_Info_HDU>();// 大小可变数组
+		String url_BASE = "http://acm.hdu.edu.cn/showproblem.php?pid=";//
+		int pbmid = 1000;// 第一题
+ 		String str="";//中间变量
+		String [] Minfo=new String[13];
+
+
+		Document doc = null;
+		while (pbmid < 1010) { //循环获取数据
+			try {
+				doc = Jsoup.connect(url_BASE + pbmid).get();
+			} catch (IOException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+			// 0 url
+			Minfo[0] = new String(url_BASE + pbmid);
+			
+			// 1 获取 title  <title>Problem - 1001</title>
+			Elements elms_title = doc.select("title");
+			Minfo[1] = new String(elms_title.text());
+			
+			// 2 获取题目
+			 Elements elms_problem = doc.select("h1[^sty]");
+			 Minfo[2] = new String(elms_problem.text());
+			 
+			 // 3456 时间限制； 内存限制； 提交总数； 通过的提交数；
+			 Elements elms_lmt_num = doc.select("span:contains(Time Limit)");
+			 str="";
+			 for (Element element : elms_lmt_num) {
+				 str += element.text();
+			 }
+			 Minfo[3] = new String(str.substring(0,str.indexOf("Memory")-4).trim());
+			 Minfo[4] = new String(str.substring(str.indexOf("Memory"),str.indexOf("Total")));
+			 Minfo[5] = new String(str.substring(str.indexOf("Total"),str.indexOf("Accepted")-4));
+			 Minfo[6] = new String(str.substring(str.indexOf("Accepted"),str.length()));
+			 
+			 // 789 10 11 12   题面描述 ; 输入;输出; 输入样例 ; 输出样例; 作者;
+			 String [] strarr=new String[10];
+			 int i=0;
+			 System.out.println(pbmid);
+			 Elements elms_7_12 = doc.select("div[class=panel_content]");
+			 for (Element element : elms_7_12) {
+				 strarr[i++] = new String(element.text());
+			 }
+			 Minfo[7] = new String(strarr[0].toString());
+			 Minfo[8] = new String(strarr[1].toString());
+			 Minfo[9] = new String(strarr[2].toString());
+			 Minfo[10] = new String(strarr[3].toString());
+			 Minfo[11] = new String(strarr[4].toString());
+			 Minfo[12] = new String(strarr[5].toString());
+			
+			 //数据获取完毕 创建 url_Info_HDU 实例并加入 list
+			 url_Info_HDU url_new = new url_Info_HDU(Minfo);
+			 url_list.add(url_new);
+			 
+			 pbmid++;
+			 //end
+		} // while -end
+ 
+		//输出 到文件
+		for(url_Info_HDU i:url_list){
+			PrintWriter out = null;
+			try {
+				out = new PrintWriter(new File(""+i.getValueFrmCls("title").trim()+".txt"));
+			} catch (FileNotFoundException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+			
+			out.println(i.printInfo());//输出
+			out.close();
+		}
+		System.out.println("Done");
+	}
+}
+//
+//String url;//url 0
+//String title;// 页面标题 1
+//
+//String problem;// 题目 2
+//
+//String time_Lim;// 时间限制 3
+//String memory_Lim;// 内存限制 4
+//String total_Sub;// 提交总数 5
+//String accepted_Sub;// 通过的提交数 6
+//
+//String problem_Des;// 题面描述 7
+//String input;// 输入 8
+//String output;// 输出 9
+//String sample_Inp;// 输入样例 10
+//String sample_Out;// 输出样例 11
+//String author;// 作者 12
+// 1 题目；
+// <h1 style="color:#1A5CC8">Sum Problem</h1>
+// Elements elements2 = doc.select("h1[^sty]");
+// for (Element element : elements2) {
+// String temp = element.text();
+//
+// System.out.println(temp);
+// }
+
+// 2 l 时间限制； 内存限制； 提交总数； 通过的提交数；
+// Elements elements2 = doc.select("span:contains(Time Limit)");
+// for (Element element : elements2) {
+// String temp = element.text();
+// System.out.println(temp);
+// }
+
+// 3 题面描述；l 输入；l 输出； 输入样例 ， 输出样例， 作者
+// String temp ="";
+// Elements elements2 = doc.select("div[class=panel_content]");
+// for (Element element : elements2) {
+// temp = element.text();
+// System.out.println(temp);
+// }

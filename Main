@@ -1,0 +1,234 @@
+package test121;
+
+import java.util.Queue;
+
+// PrintJob 任务
+class PrintJob {
+	private String jobName;
+	private int pages;
+
+	public PrintJob(String sjN, int spg) {
+		this.jobName = new String(sjN);
+		this.pages = spg;
+	}
+
+	public String getName() {
+		return this.jobName;
+	}
+
+	public int getPages() {
+		return this.pages;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+// Producer 加工
+class Producer implements Runnable {
+
+	private int sizeOfJobs;
+	private int numberOfJobs;
+	private int delayBetweenJobs;// 添加Job的间隔时间
+	private String producerName;
+
+	private Thread PrintThread = null;
+
+	// 构造函数
+	public Producer(int ss, int sn, int sd, String spn, Thread t) {
+		this.sizeOfJobs = ss;
+		this.numberOfJobs = sn;
+		this.delayBetweenJobs = sd;
+		this.producerName = new String(spn);
+		this.PrintThread = t;
+	}
+
+	// Producer 加工 根据 numberOfJobs 属性产生一定量的打印任务
+	public void run() {
+		for (int i = 0; i < this.numberOfJobs; i++) {
+			PrintJob pj = new PrintJob(this.producerName + " #" + i, this.sizeOfJobs);
+			try {
+				// 加入任务列表
+				Printer.getInstance().addJob(pj);
+				// 延时 提交任务
+				Thread.sleep(this.delayBetweenJobs);
+			} catch (InterruptedException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			} catch (FullQueueException e) {
+				// 队列满
+
+				System.out.println("无法添加打印任务 启动 Printer" + e);
+
+			}
+			// 成功添加任务
+
+		} // for -end
+
+	}
+
+}// class - end
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
+	// 打印 【饿汉式单例】 饿汉式单例类.在类初始化时，已经自行实例化
+
+class Printer implements Runnable {
+
+	static private CircleQueue<PrintJob> printQueue = new CircleQueue<PrintJob>();
+	static private boolean stateIsRunning = true;
+	private static final Printer PRNTR_ONLY = new Printer();
+	static private boolean whileend = false;
+
+	// 私有构造函数
+	private Printer() {
+
+	}
+
+	public static Printer getInstance() {
+
+		return PRNTR_ONLY;// 单实例
+	}
+
+	public synchronized void halt() {//////////////////////////////////
+		if (Printer.stateIsRunning) {
+			System.out.println("C: Print manager is halted.");
+			Printer.stateIsRunning = false;
+		}
+	}
+
+	public void addJob(PrintJob job) throws FullQueueException, InterruptedException {///////////////////////////////
+		// 调用循环队列
+		synchronized (printQueue) {
+			try {
+				this.printQueue.addBack(job);
+
+			} catch (FullQueueException e) {// FullQueueException
+				// 队列满
+				// System.out.println("【log】Printer-addJob()" + e);
+
+				try {
+					printQueue.notify();// 启动 Printer
+					printQueue.wait();
+				} catch (InterruptedException e1) {
+					// TODO 自动生成的 catch 块
+					e1.printStackTrace();
+				}
+			}
+
+		}
+		// 成功 添加一条任务
+		System.out.println("[1]P: Adding job " + job.getName() + " to the queue");
+		// printQueue.notify();// 启动 Printer
+	}
+
+	private PrintJob getJob() throws EmptyQueueException {
+		// 返回 队列头
+		PrintJob p = null;
+		synchronized (printQueue) {
+			while (p == null && stateIsRunning) {
+				try {
+					p = this.printQueue.element();
+					Printer.printQueue.removeFront();// 删除 队头
+				} catch (EmptyQueueException e) {
+					// System.out.println("【log】Printer -getJob()" + e);
+
+					try {
+						printQueue.notifyAll();// 启动 pd123
+						printQueue.wait(500);// Printer释放锁 等待 pd123 添加任务
+
+					} catch (InterruptedException e1) {
+						// TODO 自动生成的 catch 块
+						e1.printStackTrace();
+					}
+					System.out.println("C: Waiting on a job to print." + stateIsRunning);
+
+				}
+				// 成功获取一条任务
+				// System.out.println("【log】Printer -getJob()" + "成功获取一条任务");
+
+			}
+			return p;
+		}
+
+	}
+
+	// Printer run
+	public void run() {
+
+		System.out.println("C: Print manager is starting up.");
+		while (stateIsRunning) {
+			PrintJob pjob = null;
+			try {
+				// 取出队头元素
+				pjob = this.getJob();// 取出队头元素
+
+				// 打印 这个作业
+				System.out.println("[2]C:Starting job " + pjob.getName());
+				// 以 sleep 代表打印操作
+				Thread.sleep(500 * pjob.getPages());// 500 延时 * pages数目
+				System.out.println("[3]C:Completed job " + pjob.getName());
+			} catch (EmptyQueueException e) {
+				// 队列为空时，等待其他线程添加任务
+				// System.out.println("C: Waiting on a job to print." +
+				// stateIsRunning);
+				break;
+
+			} catch (InterruptedException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+		} // while -end
+	}
+} // class -end
+	// wait()和notify()所以它们必须在 synchronized函数或synchronized block中进行调用，
+	// 否则虽然能编译通过，但在运行时会发生IllegalMonitorStateException的异常。
+
+public class Main {
+	public static void main(String[] args) {
+
+		// 优先级 低1- 10高
+		// sizeofjobs numberofjobs delayBetweenJobs producerName
+
+		Printer PRNT_P = Printer.getInstance();
+		Thread THRD_P = new Thread(PRNT_P);
+		THRD_P.setPriority(10);/// 最高优先级
+
+		Producer pd1 = new Producer(5, 2, 5, "A", THRD_P);
+		Producer pd2 = new Producer(5, 2, 5, "B", THRD_P);
+		Producer pd3 = new Producer(5, 3, 5, "C", THRD_P);
+
+		Thread thrd_A = new Thread(pd1);
+		Thread thrd_B = new Thread(pd2);
+		Thread thrd_C = new Thread(pd3);
+
+		thrd_A.start();
+		thrd_B.start();
+		thrd_C.start();
+		THRD_P.start();// 开始 打印管理线程
+
+		try {
+			// 主线程等待 子线程结束后 再结束
+			thrd_A.join();
+			thrd_B.join();
+			thrd_C.join();
+
+		} catch (InterruptedException e1) {
+			// TODO 自动生成的 catch 块
+			e1.printStackTrace();
+		}
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			// TODO 自动生成的 catch 块
+			e.printStackTrace();
+		}
+		// System.out.println("1结束");
+		PRNT_P.halt();// 设置flag停止
+		// System.out.println("2结束");
+
+	}
+
+}
